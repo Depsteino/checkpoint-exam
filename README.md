@@ -5,7 +5,12 @@
 [![ECS](https://img.shields.io/badge/ECS-Container-blue)](https://aws.amazon.com/ecs)
 [![GitHub Actions](https://img.shields.io/badge/GitHub-Actions-black)](https://github.com/features/actions)
 
-An exam-ready, event-driven microservices architecture on AWS ECS with automated CI/CD pipelines.
+Exam submission implementing a two‑service, event‑driven system on AWS ECS: an ALB‑fronted API validates payloads and publishes to SQS, and a worker consumes from SQS into S3. Infrastructure is provisioned via Terraform with CI/CD pipelines for build and deploy, plus monitoring via Grafana.
+
+| Service | Demo URL | Description | Notes |
+|---|---|---|---|
+| Microservice 1 API (Health) | http://candidate-2-alb-1452912344.us-east-1.elb.amazonaws.com/health | REST API for Microservice 1; it awaits curl requests and publishes validated payloads to SQS. | Deployed for demo purposes only. If infra is destroyed, this link will not be available. You can redeploy using this repo. |
+| Grafana | http://candidate-2-alb-1452912344.us-east-1.elb.amazonaws.com/grafana | Monitoring UI for Microservice 1/2 logs and metrics. | Deployed for demo purposes only. If infra is destroyed, this link will not be available. You can redeploy using this repo. |
 
 ---
 
@@ -21,10 +26,9 @@ Add AWS credentials to your repository secrets:
   - `AWS_ACCESS_KEY_ID`
   - `AWS_SECRET_ACCESS_KEY`
 
-> 💡 **Don't have AWS credentials?**  
-> Create them at: [AWS IAM Console](https://console.aws.amazon.com/iam/home#/security_credentials)
-
 ### 2️⃣ Bootstrap Infrastructure (One-Time)
+
+Note: If the default Terraform state S3 bucket name is already taken, set the `TF_STATE_BUCKET` repository variable to a unique bucket name, then rerun the Bootstrap workflow.
 
 - 🔗 **[Run Bootstrap Workflow](https://github.com/YOUR_USERNAME/YOUR_REPO/actions/workflows/bootstrap.yaml)**
 - Click **"Run workflow"** → Use defaults → **"Run workflow"**
@@ -57,8 +61,8 @@ Or run manually:
 3) Fetch the SSM token and run curl:
 
 ```bash
-# Get ALB DNS from outputs (or copy from workflow output)
-ALB_DNS=$(terraform -chdir=infra output -raw alb_url | sed 's|http://||')
+# ALB URL from outputs, if you deployed a new infra, the alb url will differ, make sure to adjust the ALB_URL value below.
+ALB_URL=http://candidate-2-alb-1452912344.us-east-1.elb.amazonaws.com
 
 # Get API token from SSM
 TOKEN=$(aws ssm get-parameter \
@@ -68,14 +72,14 @@ TOKEN=$(aws ssm get-parameter \
   --output text)
 
 # Call API
-curl -X POST "http://$ALB_DNS/" \
+curl -X POST "$ALB_URL/" \
   -H "Content-Type: application/json" \
   -d '{
     "data": {
-      "email_subject": "Hello",
+      "email_subject": "Hello Checkpoint!",
       "email_sender": "sender@example.com",
       "email_timestream": 1712851200,
-      "email_content": "Body text"
+      "email_content": "Happy New Year!"
     },
     "token": "'"${TOKEN}"'"
   }'
@@ -84,6 +88,8 @@ curl -X POST "http://$ALB_DNS/" \
 ---
 
 ## 📊 Grafana Dashboard
+
+> **Note:** The CloudWatch plugin can throw UI errors in Safari. Use **Firefox** or **Chrome** when viewing Grafana.
 
 **URL:** `http://<ALB_DNS>/grafana/`
 
@@ -97,7 +103,5 @@ curl -X POST "http://$ALB_DNS/" \
     --query 'Parameter.Value' \
     --output text
   ```
-
-> **Note:** The CloudWatch plugin can throw UI errors in Safari. Use **Firefox** or **Chrome** when viewing Grafana.
 
 ---
