@@ -1,0 +1,85 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - service: microservice-1-producer
+            context: microservice_1_producer
+            dockerfile: microservice_1_producer/dockerfile
+          - service: microservice-2-consumer
+            context: microservice_2_consumer
+            dockerfile: microservice_2_consumer/dockerfile
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.9"
+
+      - name: Install API Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r microservice_1_producer/requirements.txt
+
+      - name: Run API Unit Tests
+        working-directory: microservice_1_producer
+        run: python -m unittest discover -v
+
+      - name: Install Worker Dependencies
+        run: python -m pip install -r microservice_2_consumer/requirements.txt
+
+      - name: Run Worker Unit Tests
+        working-directory: microservice_2_consumer
+        run: python -m unittest discover -v
+
+      - name: Configure AWS Credentials
+        if: github.event_name == 'push'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1
+
+      - name: Precheck Infra (ECR Repos)
+        if: github.event_name == 'push'
+        env:
+          AWS_REGION: us-east-1
+        run: |
+          set -euo pipefail
+          for repo in microservice-1-producer microservice-2-consumer; do
+            aws ecr describe-repositories --repository-names "${repo}" --region "${AWS_REGION}" >/dev/null
+          done
+
+      - name: Login to Amazon ECR
+        if: github.event_name == 'push'
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build Image
+        run: |
+          VERSION=$(cat VERSION)
+          SHORT_SHA=${GITHUB_SHA::7}
+          docker build \
+            -f ${{ matrix.dockerfile }} \
+            --build-arg APP_VERSION=${VERSION}-${SHORT_SHA} \
+            -t ${{ matrix.service }}:${{ github.sha }} \
+            ${{ matrix.context }}
+
+      - name: Tag and Push to ECR
+        if: github.event_name == 'push'
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker tag ${{ matrix.service }}:${IMAGE_TAG} ${ECR_REGISTRY}/${{ matrix.service }}:${IMAGE_TAG}
+          docker push ${ECR_REGISTRY}/${{ matrix.service }}:${IMAGE_TAG}

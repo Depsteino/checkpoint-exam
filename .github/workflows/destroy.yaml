@@ -1,0 +1,124 @@
+name: Destroy Resources
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: What to destroy (infra, bootstrap, both)
+        required: true
+        default: infra
+      confirm_destroy:
+        description: Type "I_UNDERSTAND" to confirm deletion
+        required: true
+      state_bucket:
+        description: S3 bucket name for Terraform state
+        required: true
+        default: candidate-2-terraform-s3
+      lock_table:
+        description: DynamoDB table name for Terraform locks
+        required: true
+        default: candidate-2-terraform-lock
+      aws_region:
+        description: AWS region
+        required: true
+        default: us-east-1
+
+jobs:
+  destroy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_REGION: ${{ inputs.aws_region }}
+      TF_STATE_BUCKET: ${{ vars.TF_STATE_BUCKET || 'candidate-2-terraform-s3' }}
+      TF_LOCK_TABLE: ${{ vars.TF_LOCK_TABLE || 'candidate-2-terraform-lock' }}
+      TF_STATE_KEY: terraform.tfstate
+    steps:
+      - name: Validate confirmation
+        env:
+          CONFIRM: ${{ inputs.confirm_destroy }}
+        run: |
+          set -euo pipefail
+          if [ "${CONFIRM}" != "I_UNDERSTAND" ]; then
+            echo "Confirmation string does not match. Aborting."
+            exit 1
+          fi
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Validate target input
+        env:
+          TARGET: ${{ inputs.target }}
+        run: |
+          set -euo pipefail
+          case "${TARGET}" in
+            infra|bootstrap|both) ;;
+            *) echo "Invalid target: ${TARGET}"; exit 1 ;;
+          esac
+
+      - name: Verify backend exists
+        if: inputs.target == 'infra' || inputs.target == 'both'
+        run: |
+          set -euo pipefail
+          aws s3api head-bucket --bucket "${TF_STATE_BUCKET}"
+          aws dynamodb describe-table --table-name "${TF_LOCK_TABLE}" >/dev/null
+
+      - name: Checkout Code
+        if: inputs.target == 'infra' || inputs.target == 'both'
+        uses: actions/checkout@v4
+
+      - name: Setup Terraform
+        if: inputs.target == 'infra' || inputs.target == 'both'
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform Init
+        if: inputs.target == 'infra' || inputs.target == 'both'
+        working-directory: infra
+        run: |
+          set -euo pipefail
+          terraform init -input=false \
+            -backend-config="bucket=${TF_STATE_BUCKET}" \
+            -backend-config="key=${TF_STATE_KEY}" \
+            -backend-config="region=${AWS_REGION}" \
+            -backend-config="dynamodb_table=${TF_LOCK_TABLE}" \
+            -backend-config="encrypt=true"
+
+      - name: Terraform Destroy
+        if: inputs.target == 'infra' || inputs.target == 'both'
+        working-directory: infra
+        run: terraform destroy -auto-approve -input=false
+
+      - name: Empty and Delete S3 State Bucket
+        if: inputs.target == 'bootstrap' || inputs.target == 'both'
+        env:
+          STATE_BUCKET: ${{ inputs.state_bucket }}
+        run: |
+          set -euo pipefail
+          if aws s3api head-bucket --bucket "${STATE_BUCKET}" 2>/dev/null; then
+            aws s3 rm "s3://${STATE_BUCKET}" --recursive
+            aws s3api list-object-versions --bucket "${STATE_BUCKET}" \
+              --query 'Versions[].{Key:Key,VersionId:VersionId}' --output json > /tmp/versions.json
+            aws s3api list-object-versions --bucket "${STATE_BUCKET}" \
+              --query 'DeleteMarkers[].{Key:Key,VersionId:VersionId}' --output json > /tmp/markers.json
+            aws s3api delete-objects --bucket "${STATE_BUCKET}" \
+              --delete "Objects=$(jq -s 'add' /tmp/versions.json /tmp/markers.json)"
+            aws s3api delete-bucket --bucket "${STATE_BUCKET}"
+          else
+            echo "State bucket not found: ${STATE_BUCKET}"
+          fi
+
+      - name: Delete DynamoDB Lock Table
+        if: inputs.target == 'bootstrap' || inputs.target == 'both'
+        env:
+          LOCK_TABLE: ${{ inputs.lock_table }}
+        run: |
+          set -euo pipefail
+          if aws dynamodb describe-table --table-name "${LOCK_TABLE}" >/dev/null 2>&1; then
+            aws dynamodb delete-table --table-name "${LOCK_TABLE}"
+            aws dynamodb wait table-not-exists --table-name "${LOCK_TABLE}"
+          else
+            echo "Lock table not found: ${LOCK_TABLE}"
+          fi
