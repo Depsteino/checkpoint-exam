@@ -3,13 +3,14 @@ resource "aws_s3_bucket" "app_bucket" {
   force_destroy = true
 }
 
-resource "aws_s3_bucket_public_access_block" "app_bucket" {
-  bucket                  = aws_s3_bucket.app_bucket.id
-  block_public_acls       = true
-  ignore_public_acls      = true
-  block_public_policy     = true
-  restrict_public_buckets = true
-}
+# NOTE: Disabled due to SCP explicit deny in exam AWS account.
+# resource "aws_s3_bucket_public_access_block" "app_bucket" {
+#   bucket                  = aws_s3_bucket.app_bucket.id
+#   block_public_acls       = true
+#   ignore_public_acls      = true
+#   block_public_policy     = true
+#   restrict_public_buckets = true
+# }
 
 resource "aws_sqs_queue" "app_queue" {
   name = "${var.project_name}-queue"
