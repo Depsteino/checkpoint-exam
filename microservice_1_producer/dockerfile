@@ -1,0 +1,24 @@
+# Use a lightweight Python base image
+FROM python:3.9-slim
+
+# Set build-time argument for versioning (defaults to 'dev')
+ARG APP_VERSION=dev
+ENV APP_VERSION=${APP_VERSION}
+
+# Set the working directory inside the container
+WORKDIR /app
+
+# Install system dependencies if needed (none needed for basic Flask/Boto3)
+# Copy requirements first to leverage Docker layer caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the rest of the application code
+COPY . .
+
+# Expose Port 8080 (Matches your preference)
+EXPOSE 8080
+
+# Run with Gunicorn
+# Using 4 workers is a standard production starting point
+CMD ["gunicorn", "--bind", "0.0.0.0:8080", "--workers", "1", "producer_app:app"]

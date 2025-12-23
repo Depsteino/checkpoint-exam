@@ -1,0 +1,9 @@
+output "alb_sg_id" { value = aws_security_group.alb.id }
+output "ecs_sg_id" { value = aws_security_group.ecs_node.id }
+output "execution_role_arn" { value = aws_iam_role.ecs_execution_role.arn }
+output "task_role_arn" { value = aws_iam_role.ecs_task_role.arn }
+output "grafana_task_role_arn" { value = aws_iam_role.grafana_task_role.arn }
+output "instance_profile_name" { value = aws_iam_instance_profile.ecs_instance_profile.name }
+output "ssm_param_name" { value = aws_ssm_parameter.token.name }
+output "grafana_admin_password_param_name" { value = aws_ssm_parameter.grafana_admin_password.name }
+output "grafana_admin_password_param_arn" { value = aws_ssm_parameter.grafana_admin_password.arn }

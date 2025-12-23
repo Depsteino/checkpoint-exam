@@ -1,0 +1,64 @@
+{
+  "uid": "microservices-overview",
+  "title": "Microservices Overview",
+  "schemaVersion": 38,
+  "version": 1,
+  "time": { "from": "now-1h", "to": "now" },
+  "refresh": "30s",
+  "panels": [
+    {
+      "id": 0,
+      "type": "text",
+      "title": "Deployment",
+      "gridPos": { "x": 0, "y": 0, "w": 24, "h": 3 },
+      "options": {
+        "mode": "markdown",
+        "content": "**Commit:** `${grafana_dashboard_version}`"
+      }
+    },
+    {
+      "id": 3,
+      "type": "logs",
+      "title": "Producer Logs (microservice-1-producer)",
+      "datasource": { "type": "cloudwatch", "uid": "cloudwatch" },
+      "gridPos": { "x": 0, "y": 3, "w": 12, "h": 8 },
+      "options": {
+        "dedupStrategy": "none",
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "region": "us-east-1",
+          "queryMode": "Logs",
+          "logGroupNames": ["${log_group}"],
+          "expression": "fields @timestamp, @message | filter @logStream like /microservice-1-producer/ | sort @timestamp desc | limit 50"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "logs",
+      "title": "Consumer Logs (microservice-2-consumer)",
+      "datasource": { "type": "cloudwatch", "uid": "cloudwatch" },
+      "gridPos": { "x": 12, "y": 3, "w": 12, "h": 8 },
+      "options": {
+        "dedupStrategy": "none",
+        "showLabels": false,
+        "showTime": true,
+        "sortOrder": "Descending"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "region": "us-east-1",
+          "queryMode": "Logs",
+          "logGroupNames": ["${log_group}"],
+          "expression": "fields @timestamp, @message | filter @logStream like /microservice-2-consumer/ | sort @timestamp desc | limit 50"
+        }
+      ]
+    }
+  ]
+}

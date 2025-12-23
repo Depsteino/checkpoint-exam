@@ -1,0 +1,17 @@
+variable "cluster_id" {}
+variable "project_name" {}
+variable "execution_role_arn" {}
+variable "task_role_arn" {}
+variable "grafana_task_role_arn" {}
+variable "repo_urls" {}
+variable "sqs_url" {}
+variable "bucket_id" {}
+variable "ssm_param_name" {}
+variable "target_group_arn" {}
+variable "grafana_target_group_arn" {}
+variable "grafana_admin_password_param_arn" {}
+variable "alb_dns" {}
+variable "alb_arn_suffix" {}
+variable "target_group_arn_suffix" {}
+variable "alb_metric_az" {}
+variable "grafana_dashboard_version" {}
