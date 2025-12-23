@@ -1,0 +1,16 @@
+# Use a lightweight Python base image
+FROM python:3.9-slim
+
+# Set the working directory
+WORKDIR /app
+
+# Install dependencies
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy the worker code
+COPY consumer_app.py .
+
+# Run the worker script
+# "-u" forces unbuffered output so logs appear instantly
+CMD ["python", "-u", "consumer_app.py"]
