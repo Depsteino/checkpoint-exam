@@ -7,10 +7,15 @@
 
 Exam submission implementing a two‑service, event‑driven system on AWS ECS: an ALB‑fronted API validates payloads and publishes to SQS, and a worker consumes from SQS into S3. Infrastructure is provisioned via Terraform with CI/CD pipelines for build and deploy, plus monitoring via Grafana.
 
+[Architecture Diagram](doc/ARCHITECTURE_DIAGRAM.md)
+
 | Service | Demo URL | Description | Notes |
 |---|---|---|---|
 | Microservice 1 API (Health) | http://candidate-2-alb-1452912344.us-east-1.elb.amazonaws.com/health | REST API for Microservice 1; it awaits curl requests and publishes validated payloads to SQS. | Deployed for demo purposes only. If infra is destroyed, this link will not be available. You can redeploy using this repo. |
 | Grafana | http://candidate-2-alb-1452912344.us-east-1.elb.amazonaws.com/grafana | Monitoring UI for Microservice 1/2 logs and metrics. | Deployed for demo purposes only. If infra is destroyed, this link will not be available. You can redeploy using this repo. |
+
+Note: This project is built for demo purposes and minimal cost using AWS Free Tier where possible. Many improvements are possible for production use.
+
 
 ---
 
@@ -96,6 +101,7 @@ curl -X POST "$ALB_URL/" \
 **Login:**
 - Username: `admin`
 - Password:
+- Make sure your **AWS CLI is configured locally** for the same account/region.
   ```bash
   aws ssm get-parameter \
     --name "/candidate-2/grafana_admin_password" \
