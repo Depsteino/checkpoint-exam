@@ -62,10 +62,11 @@ jobs:
             fi
           fi
 
-          aws s3api put-public-access-block \
-            --bucket "${STATE_BUCKET}" \
-            --public-access-block-configuration \
-            "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
+          # NOTE: Disabled due to SCP explicit deny in exam AWS account.
+          # aws s3api put-public-access-block \
+          #   --bucket "${STATE_BUCKET}" \
+          #   --public-access-block-configuration \
+          #   "BlockPublicAcls=true,IgnorePublicAcls=true,BlockPublicPolicy=true,RestrictPublicBuckets=true"
 
           aws s3api put-bucket-versioning \
             --bucket "${STATE_BUCKET}" \
