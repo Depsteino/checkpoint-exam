@@ -18,7 +18,7 @@ SQS_QUEUE_URL = os.getenv('SQS_QUEUE_URL')
 SSM_PARAM_NAME = os.getenv('SSM_PARAM_NAME', 'auth_token')
 APP_VERSION = os.getenv('APP_VERSION', 'unknown')
 
-# AWS Clients (with LocalStack support via ENDPOINT_URL) #
+# AWS Clients (with LocalStack support via ENDPOINT_URL)
 ENDPOINT_URL = os.getenv('AWS_ENDPOINT_URL')
 sqs_client = boto3.client('sqs', region_name=REGION, endpoint_url=ENDPOINT_URL)
 ssm_client = boto3.client('ssm', region_name=REGION, endpoint_url=ENDPOINT_URL)
